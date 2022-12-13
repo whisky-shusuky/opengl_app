@@ -1,5 +1,6 @@
 use std::mem;
 use std::os::raw::c_void;
+use std::path::Path;
 use std::time::Duration;
 
 use c_str_macro::c_str;
@@ -10,9 +11,11 @@ use imgui::im_str;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
+mod image_manager;
 mod shader;
 mod vertex;
 
+use image_manager::ImageManager;
 use shader::Shader;
 use vertex::Vertex;
 
@@ -25,7 +28,7 @@ type Matrix4 = cgmath::Matrix4<f32>;
 
 const WINDOW_WIDTH: u32 = 900;
 const WINDOW_HEIGHT: u32 = 480;
-const FLOAT_NUM: usize = 3;
+const FLOAT_NUM: usize = 8;
 const VERTEX_NUM: usize = 36;
 const BUF_LEN: usize = FLOAT_NUM * VERTEX_NUM;
 
@@ -51,73 +54,76 @@ fn main() {
     let _gl_context = window.gl_create_context().unwrap();
     gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as _);
 
+    let mut image_manager = ImageManager::new();
+    image_manager.load_image(Path::new("rsc/image/surface.png"), "surface", true);
+
     let shader = Shader::new("rsc/shader/shader.vs", "rsc/shader/shader.fs");
 
     // set buffer
     #[rustfmt::skip]
     let buffer_array: [f32; BUF_LEN] = [
         // 1
-        0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0,
-        1.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0,
+        0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0,
+        1.0, 1.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0,
 
-        0.0, 0.0, 0.0,
-        1.0, 1.0, 0.0,
-        1.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0,
+        1.0, 1.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0,
+        1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 1.0, 1.0,
 
         // 2
-        0.0, 0.0, 1.0,
-        0.0, 0.0, 0.0,
-        1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0,
+        0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0,
+        1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0,
 
-        0.0, 0.0, 1.0,
-        1.0, 0.0, 0.0,
-        1.0, 0.0, 1.0,
+        0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 1.0,
+        1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0,
+        1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 1.0,
 
         // 3
-        0.0, 1.0, 1.0,
-        0.0, 0.0, 1.0,
-        1.0, 0.0, 1.0,
+        0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+        0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+        1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0,
 
-        0.0, 1.0, 1.0,
-        1.0, 0.0, 1.0,
-        1.0, 1.0, 1.0,
+        0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+        1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
 
         // 4
-        0.0, 1.0, 0.0,
-        0.0, 1.0, 1.0,
-        1.0, 1.0, 1.0,
+        0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+        0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+        1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
 
-        0.0, 1.0, 0.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 0.0,
+        0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+        1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
+        1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
 
         // 5
-        1.0, 0.0, 1.0,
-        1.0, 0.0, 0.0,
-        1.0, 1.0, 0.0,
+        1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0,
+        1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+        1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0,
 
-        1.0, 0.0, 1.0,
-        1.0, 1.0, 0.0,
-        1.0, 1.0, 1.0,
+        1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0,
+        1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0,
+        1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0,
 
         // 6
-        0.0, 1.0, 1.0,
-        0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0,
+        0.0, 1.0, 1.0, -1.0, 0.0, 0.0, 0.0, 1.0,
+        0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 1.0, 0.0,
 
-        0.0, 1.0, 1.0,
-        0.0, 0.0, 0.0,
-        0.0, 0.0, 1.0,
+        0.0, 1.0, 1.0, -1.0, 0.0, 0.0, 0.0, 1.0,
+        0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 1.0, -1.0, 0.0, 0.0, 1.0, 1.0,
     ];
 
     let vertex = Vertex::new(
         (BUF_LEN * mem::size_of::<GLfloat>()) as GLsizeiptr,
         buffer_array.as_ptr() as *const c_void,
         gl::STATIC_DRAW,
-        vec![gl::FLOAT],
-        vec![FLOAT_NUM as i32],
-        FLOAT_NUM as i32 * mem::size_of::<GLfloat>() as GLsizei,
+        vec![gl::FLOAT, gl::FLOAT, gl::FLOAT],
+        vec![3, 3, 2],
+        (FLOAT_NUM * mem::size_of::<GLfloat>()) as GLsizei,
         VERTEX_NUM as i32,
     );
 
@@ -133,11 +139,40 @@ fn main() {
 
     let mut depth_test: bool = true;
     let mut blend: bool = true;
-    let mut wireframe: bool = true;
+    let mut wireframe: bool = false;
     let mut culling: bool = true;
-    let mut camera_x: f32 = 5.0f32;
-    let mut camera_y: f32 = -5.0f32;
-    let mut camera_z: f32 = 5.0f32;
+    let mut camera_x: f32 = 2.0f32;
+    let mut camera_y: f32 = -2.0f32;
+    let mut camera_z: f32 = 2.0f32;
+    let mut alpha: f32 = 1.0f32;
+    let mut material_specular: Vector3 = Vector3 {
+        x: 0.2,
+        y: 0.2,
+        z: 0.2,
+    };
+    let mut material_shininess: f32 = 0.1f32;
+    let mut light_direction: Vector3 = Vector3 {
+        x: 1.0,
+        y: 1.0,
+        z: 0.0,
+    };
+    let mut ambient: Vector3 = Vector3 {
+        x: 0.3,
+        y: 0.3,
+        z: 0.3,
+    };
+    let mut diffuse: Vector3 = Vector3 {
+        x: 0.5,
+        y: 0.5,
+        z: 0.5,
+    };
+    let mut specular: Vector3 = Vector3 {
+        x: 0.2,
+        y: 0.2,
+        z: 0.2,
+    };
+
+    let surface_texture_id = image_manager.get_texture_id("surface");
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     'running: loop {
@@ -220,8 +255,18 @@ fn main() {
             shader.set_mat4(c_str!("uModel"), &model_matrix);
             shader.set_mat4(c_str!("uView"), &view_matrix);
             shader.set_mat4(c_str!("uProjection"), &projection_matrix);
+            shader.set_float(c_str!("uAlpha"), alpha);
+            shader.set_vec3(c_str!("uViewPosition"), camera_x, camera_y, camera_z);
+            shader.set_vector3(c_str!("uMaterial.specular"), &material_specular);
+            shader.set_float(c_str!("uMaterial.shininess"), material_shininess);
+            shader.set_vector3(c_str!("uLight.direction"), &light_direction);
+            shader.set_vector3(c_str!("uLight.ambient"), &ambient);
+            shader.set_vector3(c_str!("uLight.diffuse"), &diffuse);
+            shader.set_vector3(c_str!("uLight.specular"), &specular);
 
+            gl::BindTexture(gl::TEXTURE_2D, surface_texture_id as u32);
             vertex.draw();
+            gl::BindTexture(gl::TEXTURE_2D, 0);
 
             imgui_sdl2_context.prepare_frame(
                 imgui_context.io_mut(),
@@ -232,6 +277,7 @@ fn main() {
             let ui = imgui_context.frame();
             imgui::Window::new(im_str!("Information"))
                 .size([300.0, 300.0], imgui::Condition::FirstUseEver)
+                .position([10.0, 10.0], imgui::Condition::FirstUseEver)
                 .build(&ui, || {
                     ui.text(im_str!("OpenGL Test App ver 1.0"));
                     ui.separator();
@@ -265,6 +311,67 @@ fn main() {
                     #[rustfmt::skip]
                     imgui::Slider::new(im_str!("Camera Z"), -5.0..=5.0)
                         .build(&ui, &mut camera_z);
+                });
+
+            imgui::Window::new(im_str!("Light"))
+                .size([300.0, 450.0], imgui::Condition::FirstUseEver)
+                .position([600.0, 10.0], imgui::Condition::FirstUseEver)
+                .build(&ui, || {
+                    imgui::Slider::new(im_str!("Alpha"), 0.0..=1.0).build(&ui, &mut alpha);
+
+                    ui.separator();
+
+                    imgui::Slider::new(im_str!("Material Specular X"), 0.0..=1.0)
+                        .build(&ui, &mut material_specular.x);
+                    imgui::Slider::new(im_str!("Material Specular Y"), 0.0..=1.0)
+                        .build(&ui, &mut material_specular.y);
+                    imgui::Slider::new(im_str!("Material Specular Z"), 0.0..=1.0)
+                        .build(&ui, &mut material_specular.z);
+
+                    imgui::Slider::new(im_str!("Material Shininess"), 0.0..=2.0)
+                        .build(&ui, &mut material_shininess);
+
+                    ui.separator();
+
+                    imgui::Slider::new(im_str!("Direction X"), -1.0..=1.0)
+                        .build(&ui, &mut light_direction.x);
+                    imgui::Slider::new(im_str!("Direction Y"), -1.0..=1.0)
+                        .build(&ui, &mut light_direction.y);
+                    imgui::Slider::new(im_str!("Direction Z"), -1.0..=1.0)
+                        .build(&ui, &mut light_direction.z);
+
+                    ui.separator();
+
+                    #[rustfmt::skip]
+                    imgui::Slider::new(im_str!("Ambient R"), 0.0..=1.0)
+                        .build(&ui, &mut ambient.x);
+                    #[rustfmt::skip]
+                    imgui::Slider::new(im_str!("Ambient G"), 0.0..=1.0)
+                        .build(&ui, &mut ambient.y);
+                    #[rustfmt::skip]
+                    imgui::Slider::new(im_str!("Ambient B"), 0.0..=1.0)
+                        .build(&ui, &mut ambient.z);
+
+                    ui.separator();
+
+                    #[rustfmt::skip]
+                    imgui::Slider::new(im_str!("Diffuse R"), 0.0..=1.0)
+                        .build(&ui, &mut diffuse.x);
+                    #[rustfmt::skip]
+                    imgui::Slider::new(im_str!("Diffuse G"), 0.0..=1.0)
+                        .build(&ui, &mut diffuse.y);
+                    #[rustfmt::skip]
+                    imgui::Slider::new(im_str!("Diffuse B"), 0.0..=1.0)
+                        .build(&ui, &mut diffuse.z);
+
+                    ui.separator();
+
+                    imgui::Slider::new(im_str!("Specular R"), 0.0..=1.0)
+                        .build(&ui, &mut specular.x);
+                    imgui::Slider::new(im_str!("Specular G"), 0.0..=1.0)
+                        .build(&ui, &mut specular.y);
+                    imgui::Slider::new(im_str!("Specular B"), 0.0..=1.0)
+                        .build(&ui, &mut specular.z);
                 });
 
             imgui_sdl2_context.prepare_render(&ui, &window);

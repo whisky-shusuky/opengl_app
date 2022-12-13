@@ -1,23 +1,24 @@
-#version 140
+#version 330
 
-in vec3 iPosition;
+layout(location = 0) in vec3 iPosition;
+layout(location = 1) in vec3 iNormal;
+layout(location = 2) in vec2 iTexCoords;
 
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
+uniform float uAlpha;
 
-// フラグメントシェーダーに変数を渡すために定義する
+out float Alpha;
 out vec3 FragPosition;
+out vec3 Normal;
+out vec2 TexCoords;
 
 void main()
 {
-  // iPositionには頂点座標が入っている
-  // uModelにはモデル行列が入っている
-  // uViewにはビュー行列が入っている
-  // uProjectionには射影行列が入っている
-
-  // iPositionを４次元ベクトルに変換する
+    Alpha = uAlpha;
     FragPosition = vec3(uModel * vec4(iPosition, 1.0));
-    // モデル行列にかける。ここでモデル行列が回転行列や縮小などであればここで実行される
+    Normal = mat3(transpose(inverse(uModel))) * iNormal;
+    TexCoords = iTexCoords;
     gl_Position = uProjection * uView * vec4(FragPosition, 1.0);
 }

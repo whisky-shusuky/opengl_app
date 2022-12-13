@@ -47,7 +47,6 @@ impl Shader {
             fragment_code.as_bytes()).unwrap();
 
         unsafe {
-            //gl::CreateShaderでシェーダオブジェクトを作成し、gl::ShaderSourceでシェーダソースを設定し、gl::CompileShaderでコンパイルする。shader.check_compile_errorsdeでコンパイルエラーをチェックする。
             // vertex shader
             let vertex = gl::CreateShader(gl::VERTEX_SHADER);
             gl::ShaderSource(vertex, 1, &cstr_vertex_code.as_ptr(), ptr::null());
@@ -61,8 +60,6 @@ impl Shader {
             shader.check_compile_errors(fragment, "FRAGMENT");
 
             // shader program
-            // gl::CreateProgramでプログラムオブジェクトを作成し、gl::AttachShaderでシェーダオブジェクトをプログラムオブジェクトにアタッチし、
-            // gl::LinkProgramでそれぞれのシェーダーを実行可能な形式に生成。shader.check_compile_errorsでリンクエラーをチェックする。
             let id = gl::CreateProgram();
             gl::AttachShader(id, vertex);
             gl::AttachShader(id, fragment);
@@ -70,7 +67,6 @@ impl Shader {
             shader.check_compile_errors(id, "PROGRAM");
 
             // delete
-            // gl::LinkProgramでリンクされてプログラムが不要になったので、gl::DeleteShaderで不要になったシェーダーを削除する。
             gl::DeleteShader(vertex);
             gl::DeleteShader(fragment);
 
