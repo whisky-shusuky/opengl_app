@@ -5,11 +5,11 @@ use std::time::Duration;
 
 use c_str_macro::c_str;
 use cgmath::perspective;
-use cgmath::prelude::SquareMatrix;
 use gl::types::{GLfloat, GLsizei, GLsizeiptr};
 use imgui::im_str;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use std::f32;
 
 mod image_manager;
 mod shader;
@@ -145,6 +145,9 @@ fn main() {
     let mut camera_y: f32 = -2.0f32;
     let mut camera_z: f32 = 2.0f32;
     let mut alpha: f32 = 1.0f32;
+    let mut rotation_x: f32 = 0.0f32;
+    let mut rotation_y: f32 = 0.0f32;
+    let mut rotation_z: f32 = 0.0f32;
     let mut material_specular: Vector3 = Vector3 {
         x: 0.2,
         y: 0.2,
@@ -225,7 +228,9 @@ fn main() {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
             // init matrice for model, view and projection
-            let model_matrix = Matrix4::identity();
+            let mut model_matrix = Matrix4::from_angle_x(cgmath::Rad(rotation_x));
+            model_matrix = model_matrix * Matrix4::from_angle_y(cgmath::Rad(rotation_y));
+            model_matrix = model_matrix * Matrix4::from_angle_z(cgmath::Rad(rotation_z));
             let view_matrix = Matrix4::look_at(
                 Point3 {
                     x: camera_x,
@@ -256,6 +261,9 @@ fn main() {
             shader.set_mat4(c_str!("uView"), &view_matrix);
             shader.set_mat4(c_str!("uProjection"), &projection_matrix);
             shader.set_float(c_str!("uAlpha"), alpha);
+            shader.set_float(c_str!("uRotX"), rotation_x);
+            shader.set_float(c_str!("uRotY"), rotation_y);
+            shader.set_float(c_str!("uRotZ"), rotation_z);
             shader.set_vec3(c_str!("uViewPosition"), camera_x, camera_y, camera_z);
             shader.set_vector3(c_str!("uMaterial.specular"), &material_specular);
             shader.set_float(c_str!("uMaterial.shininess"), material_shininess);
@@ -317,6 +325,9 @@ fn main() {
                 .size([300.0, 450.0], imgui::Condition::FirstUseEver)
                 .position([600.0, 10.0], imgui::Condition::FirstUseEver)
                 .build(&ui, || {
+                    imgui::Slider::new(im_str!("RotX"), 0.0..=10.0).build(&ui, &mut rotation_x);
+                    imgui::Slider::new(im_str!("RotY"), 0.0..=10.0).build(&ui, &mut rotation_y);
+                    imgui::Slider::new(im_str!("RotZ"), 0.0..=10.0).build(&ui, &mut rotation_z);
                     imgui::Slider::new(im_str!("Alpha"), 0.0..=1.0).build(&ui, &mut alpha);
 
                     ui.separator();
